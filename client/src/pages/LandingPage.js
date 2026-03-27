@@ -1,0 +1,179 @@
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import api from '../utils/api';
+import BrandLogo from '../components/shared/BrandLogo';
+
+const quickPoints = [
+  'Choose a charity at signup',
+  'Track scores and join reward draws',
+  'Follow winnings and payouts clearly',
+];
+
+const confidenceStats = [
+  { value: '10%', label: 'minimum charity contribution from each subscriber' },
+  { value: '5', label: 'latest golf scores retained for draw eligibility' },
+  { value: '2', label: 'simple plans with clear yearly value' },
+];
+
+const simpleSteps = [
+  {
+    title: 'Choose',
+    text: 'Start by selecting a charity you want to support.',
+  },
+  {
+    title: 'Play',
+    text: 'Log your scores and become eligible for prize draws.',
+  },
+  {
+    title: 'Track',
+    text: 'See your charity impact, results, and payout status in one place.',
+  },
+];
+
+export default function LandingPage() {
+  const [featuredCharities, setFeaturedCharities] = useState([]);
+
+  useEffect(() => {
+    api.get('/charities?featured=true')
+      .then((response) => setFeaturedCharities(response.data.charities || []))
+      .catch(() => setFeaturedCharities([]));
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-charcoal-950">
+      <header className="fixed top-0 z-50 w-full border-b border-charcoal-800/40 bg-charcoal-950/85 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+          <BrandLogo compact showTagline />
+          <div className="flex items-center gap-3">
+            <Link to="/login" className="btn-outline px-4 py-2 text-sm">Sign In</Link>
+            <Link to="/register" className="btn-gold px-4 py-2 text-sm">Get Started</Link>
+          </div>
+        </div>
+      </header>
+
+      <section className="relative px-4 pb-20 pt-32">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="hero-orb left-[8%] top-12 h-[340px] w-[340px] bg-forest-600/12" />
+          <div className="hero-orb right-[10%] top-16 h-[280px] w-[280px] bg-gold-500/10" />
+          <div className="hero-orb bottom-10 left-1/2 h-[320px] w-[320px] -translate-x-1/2 bg-white/[0.03]" />
+        </div>
+
+        <div className="relative mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+          <div className="animate-slide-up">
+            <div className="section-kicker mb-5">Charity-first experience</div>
+            <h1 className="max-w-4xl font-display text-5xl font-bold leading-[0.95] text-white md:text-7xl">
+              A cleaner way to
+              <span className="mt-2 block text-transparent bg-clip-text bg-gradient-to-r from-gold-300 via-white to-forest-400">
+                turn play into impact.
+              </span>
+            </h1>
+            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-charcoal-300">
+              Golf Charity brings subscriptions, score tracking, reward draws, and charity support into one focused platform that feels modern, transparent, and easy to trust.
+            </p>
+
+            <div className="mt-8 flex flex-col gap-4 sm:flex-row">
+              <Link to="/register" className="btn-gold px-8 py-4 text-base">
+                Start Supporting a Charity
+              </Link>
+              <Link to="/subscription" className="btn-soft px-8 py-4 text-base">
+                View Plans
+              </Link>
+            </div>
+
+            <div className="mt-10 grid gap-3 sm:grid-cols-3">
+              {quickPoints.map((point) => (
+                <div key={point} className="feature-tile">
+                  <div className="mb-3 h-2.5 w-12 rounded-full bg-gradient-to-r from-forest-400 to-gold-300" />
+                  <div className="text-sm leading-relaxed text-charcoal-300">{point}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="glass-panel mesh-border p-6 md:p-8 animate-fade-in">
+            <div className="flex items-start justify-between gap-6">
+              <div>
+                <div className="text-xs uppercase tracking-[0.22em] text-charcoal-500">How it works</div>
+                <div className="mt-2 text-2xl font-display font-bold text-white">Simple on purpose</div>
+              </div>
+              <div className="eyebrow-number">01</div>
+            </div>
+            <div className="mt-6 space-y-4">
+              {simpleSteps.map((step, index) => (
+                <div key={step.title} className="flex gap-4 rounded-2xl border border-charcoal-800/70 bg-charcoal-950/35 px-4 py-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-forest-900/60 text-sm font-bold text-forest-300">
+                    {index + 1}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-white">{step.title}</div>
+                    <div className="mt-1 text-sm leading-relaxed text-charcoal-400">{step.text}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              {confidenceStats.map((stat) => (
+                <div key={stat.label} className="rounded-2xl border border-charcoal-800/60 bg-charcoal-950/30 p-4">
+                  <div className="font-display text-3xl font-bold text-white">{stat.value}</div>
+                  <div className="mt-2 text-xs leading-relaxed text-charcoal-500">{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {featuredCharities.length > 0 && (
+        <section className="border-t border-charcoal-800/40 px-4 py-16">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+              <div className="section-kicker mb-4">Featured charities</div>
+              <h2 className="font-display text-3xl font-bold text-white md:text-4xl">Causes currently highlighted on the platform</h2>
+              <p className="max-w-xl text-sm leading-relaxed text-charcoal-400">
+                The homepage now gives these charities more presence so the product feels purpose-led before it feels game-led.
+              </p>
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-3">
+              {featuredCharities.slice(0, 3).map((charity) => (
+                <div key={charity._id} className="glass-panel mesh-border p-6">
+                  <div className="mb-5 flex items-center justify-between gap-3">
+                    <div className="text-xs uppercase tracking-[0.2em] text-charcoal-500">{charity.category || 'General'}</div>
+                    <span className="badge-gold">Spotlight</span>
+                  </div>
+                  <h3 className="font-display text-2xl font-bold text-white">{charity.name}</h3>
+                  <p className="mt-4 text-sm leading-relaxed text-charcoal-400 line-clamp-4">{charity.description}</p>
+                  <div className="mt-6 h-px w-full bg-gradient-to-r from-forest-500/40 to-transparent" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section className="border-t border-charcoal-800/40 px-4 py-20">
+        <div className="mx-auto max-w-4xl text-center">
+          <div className="section-kicker mb-4">Clear next step</div>
+          <h2 className="font-display text-4xl font-bold text-white md:text-5xl">
+            Subscribe, pick a charity, and begin.
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-lg text-charcoal-300">
+            The flow is simple by design. Choose a plan, activate your dashboard, and keep everything visible from impact to winnings.
+          </p>
+          <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
+            <Link to="/subscription" className="btn-gold px-10 py-4 text-base">Subscribe Now</Link>
+            <Link to="/register" className="btn-soft px-10 py-4 text-base">Create Account</Link>
+          </div>
+        </div>
+      </section>
+
+      <footer className="border-t border-charcoal-800/40 px-4 py-8">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 md:flex-row">
+          <BrandLogo compact showTagline={false} />
+          <p className="text-sm text-charcoal-600">Golf Charity brand system updated for a cleaner, unified identity.</p>
+        </div>
+      </footer>
+    </div>
+  );
+}
