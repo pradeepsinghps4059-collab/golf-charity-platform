@@ -32,7 +32,11 @@ export default function DashboardPage() {
 
   const loadDashboard = () => {
     api.get('/users/dashboard')
-      .then((response) => setData(response.data.dashboard))
+      .then((response) => setData(response.data.dashboard || null))
+      .catch((error) => {
+        setData(null);
+        toast.error(error.response?.data?.message || 'Failed to load dashboard');
+      })
       .finally(() => setLoading(false));
   };
 
@@ -89,6 +93,25 @@ export default function DashboardPage() {
       <AppLayout>
         <div className="flex justify-center mt-20">
           <LoadingSpinner size="lg" text="Loading dashboard..." />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (!data?.user) {
+    return (
+      <AppLayout>
+        <div className="max-w-3xl mx-auto mt-16">
+          <div className="card text-center">
+            <h1 className="page-title mb-3">Dashboard unavailable</h1>
+            <p className="text-charcoal-400 mb-5">Your account loaded, but dashboard data could not be prepared yet.</p>
+            <button type="button" className="btn-primary" onClick={() => {
+              setLoading(true);
+              loadDashboard();
+            }}>
+              Retry
+            </button>
+          </div>
         </div>
       </AppLayout>
     );

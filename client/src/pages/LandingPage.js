@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../utils/api';
 import BrandLogo from '../components/shared/BrandLogo';
+import { fetchFeaturedCharities } from '../services/charityService';
 
 const quickPoints = [
   'Choose a charity at signup',
@@ -34,8 +34,8 @@ export default function LandingPage() {
   const [featuredCharities, setFeaturedCharities] = useState([]);
 
   useEffect(() => {
-    api.get('/charities?featured=true')
-      .then((response) => setFeaturedCharities(response.data.charities || []))
+    fetchFeaturedCharities()
+      .then((charities) => setFeaturedCharities(charities || []))
       .catch(() => setFeaturedCharities([]));
   }, []);
 

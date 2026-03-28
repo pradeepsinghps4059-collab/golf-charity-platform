@@ -4,6 +4,7 @@ import AppLayout from '../components/shared/AppLayout';
 import LoadingSpinner from '../components/shared/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
+import { fetchCharities, fetchCharityById } from '../services/charityService';
 
 export default function CharityPage() {
   const { user, refreshUser } = useAuth();
@@ -16,24 +17,22 @@ export default function CharityPage() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [activeCharity, setActiveCharity] = useState(null);
+  const [donationCharityId, setDonationCharityId] = useState('');
   const [donationAmount, setDonationAmount] = useState('');
   const [donating, setDonating] = useState(false);
 
   useEffect(() => {
     setPercentage(user?.charity_percentage || 10);
     setSelected(user?.charity_id?._id || user?.charity_id || '');
+    setDonationCharityId(user?.charity_id?._id || user?.charity_id || '');
   }, [user]);
 
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (search) params.set('search', search);
-    if (category) params.set('category', category);
-
     setLoading(true);
-    api.get(`/charities${params.toString() ? `?${params.toString()}` : ''}`)
-      .then((response) => {
-        setCharities(response.data.charities);
-        setCategories(response.data.categories || []);
+    fetchCharities({ search, category })
+      .then((result) => {
+        setCharities(result.charities);
+        setCategories(result.categories || []);
       })
       .finally(() => setLoading(false));
   }, [search, category]);
@@ -42,6 +41,10 @@ export default function CharityPage() {
     () => charities.filter((charity) => charity.featured),
     [charities]
   );
+  const donationTarget = activeCharity
+    || charities.find((charity) => charity._id === donationCharityId)
+    || charities.find((charity) => charity._id === selected)
+    || null;
 
   const handleSave = async () => {
     if (!selected) return toast.error('Please select a charity');
@@ -53,6 +56,13 @@ export default function CharityPage() {
     try {
       await api.post('/charities/select', { charity_id: selected, charity_percentage: percentage });
       await refreshUser();
+      setDonationCharityId(selected);
+      if (!activeCharity) {
+        const matchedCharity = charities.find((charity) => charity._id === selected);
+        if (matchedCharity) {
+          setActiveCharity(matchedCharity);
+        }
+      }
       toast.success('Charity preference saved');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save');
@@ -63,15 +73,15 @@ export default function CharityPage() {
 
   const openCharityDetails = async (charityId) => {
     try {
-      const response = await api.get(`/charities/${charityId}`);
-      setActiveCharity(response.data.charity);
+      const charity = await fetchCharityById(charityId);
+      setActiveCharity(charity);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to load charity profile');
     }
   };
 
   const handleDonate = async () => {
-    if (!activeCharity?._id) return;
+    if (!donationTarget?._id) return;
     if (!donationAmount || Number(donationAmount) <= 0) {
       return toast.error('Enter a donation amount greater than 0');
     }
@@ -79,7 +89,7 @@ export default function CharityPage() {
     setDonating(true);
     try {
       await api.post('/charities/donate', {
-        charity_id: activeCharity._id,
+        charity_id: donationTarget._id,
         amount: Number(donationAmount),
       });
       setDonationAmount('');
@@ -235,7 +245,11 @@ export default function CharityPage() {
                       <div className="flex gap-2 mt-4">
                         <button
                           type="button"
-                          onClick={() => setSelected(charity._id)}
+                          onClick={() => {
+                            setSelected(charity._id);
+                            setDonationCharityId(charity._id);
+                            setActiveCharity(charity);
+                          }}
                           className={isSelected ? 'btn-primary flex-1' : 'btn-outline flex-1'}
                         >
                           {isSelected ? 'Selected' : 'Select'}
@@ -270,14 +284,33 @@ export default function CharityPage() {
                 Make a separate donation at any time. This is not tied to gameplay or subscription actions.
               </p>
 
-              {activeCharity ? (
+              {donationTarget ? (
                 <>
-                  <div className="text-white font-semibold">{activeCharity.name}</div>
-                  <div className="text-xs text-charcoal-500 mt-1 mb-4">{activeCharity.category || 'General'}</div>
+                  <div className="text-white font-semibold">{donationTarget.name}</div>
+                  <div className="text-xs text-charcoal-500 mt-1 mb-4">{donationTarget.category || 'General'}</div>
                 </>
               ) : (
-                <div className="text-sm text-charcoal-500 mb-4">Open a charity profile to donate to that cause.</div>
+                <div className="text-sm text-charcoal-500 mb-4">Select a charity or open a profile to donate to that cause.</div>
               )}
+
+              <label className="label">Choose charity</label>
+              <select
+                className="input-field"
+                value={donationCharityId}
+                onChange={(e) => {
+                  const nextId = e.target.value;
+                  setDonationCharityId(nextId);
+                  const matched = charities.find((charity) => charity._id === nextId) || null;
+                  setActiveCharity(matched);
+                }}
+              >
+                <option value="">Select a charity</option>
+                {charities.map((charity) => (
+                  <option key={charity._id} value={charity._id}>
+                    {charity.name}
+                  </option>
+                ))}
+              </select>
 
               <label className="label">Donation amount (INR)</label>
               <input
@@ -287,13 +320,13 @@ export default function CharityPage() {
                 value={donationAmount}
                 onChange={(e) => setDonationAmount(e.target.value)}
                 placeholder="500"
-                disabled={!activeCharity}
+                disabled={!donationTarget}
               />
 
               <button
                 type="button"
                 onClick={handleDonate}
-                disabled={!activeCharity || donating}
+                disabled={!donationTarget || donating}
                 className="btn-gold w-full mt-4"
               >
                 {donating ? 'Recording donation...' : 'Donate Now'}

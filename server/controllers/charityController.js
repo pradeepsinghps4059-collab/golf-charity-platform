@@ -1,6 +1,7 @@
 const Charity = require('../models/Charity');
 const Donation = require('../models/Donation');
 const User = require('../models/User');
+const { isSupabaseConfigured, supabaseAdmin } = require('../services/supabaseAdmin');
 
 const parseEvents = (eventsInput) => {
   if (!eventsInput) return [];
@@ -23,9 +24,65 @@ const parseCountryCodes = (input) => {
     .filter(Boolean);
 };
 
+const normalizeCharity = (charity) => ({
+  ...charity,
+  _id: charity._id || charity.id,
+});
+
+const buildSupabaseCharityQuery = ({ search = '', category = '', featured = '', country = '' }) => {
+  let query = supabaseAdmin
+    .from('charities')
+    .select('*')
+    .eq('active', true)
+    .order('featured', { ascending: false })
+    .order('name', { ascending: true });
+
+  if (category) {
+    query = query.eq('category', category);
+  }
+
+  if (featured === 'true') {
+    query = query.eq('featured', true);
+  }
+
+  if (country) {
+    query = query.contains('country_codes', [country.toUpperCase()]);
+  }
+
+  if (search) {
+    const term = search.trim();
+    if (term) {
+      query = query.or(`name.ilike.%${term}%,description.ilike.%${term}%,category.ilike.%${term}%`);
+    }
+  }
+
+  return query;
+};
+
+const findSupabaseProfileByRequestUser = async (reqUser) => {
+  const { data, error } = await supabaseAdmin
+    .from('users_profile')
+    .select('*')
+    .eq('email', reqUser.email)
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
 // @route   GET /api/charities
 const getCharities = async (req, res) => {
   try {
+    if (isSupabaseConfigured) {
+      const { search = '', category = '', featured = '', country = '' } = req.query;
+      const { data, error } = await buildSupabaseCharityQuery({ search, category, featured, country });
+      if (error) throw error;
+
+      const charities = (data || []).map(normalizeCharity);
+      const categories = [...new Set(charities.map((charity) => charity.category).filter(Boolean))];
+      return res.json({ success: true, charities, categories });
+    }
+
     const { search = '', category = '', featured = '', country = '' } = req.query;
     const query = { active: true };
 
@@ -61,6 +118,21 @@ const getCharities = async (req, res) => {
 // @route   GET /api/charities/:id
 const getCharityById = async (req, res) => {
   try {
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabaseAdmin
+        .from('charities')
+        .select('*')
+        .eq('id', req.params.id)
+        .eq('active', true)
+        .single();
+
+      if (error || !data) {
+        return res.status(404).json({ success: false, message: 'Charity not found' });
+      }
+
+      return res.json({ success: true, charity: normalizeCharity(data) });
+    }
+
     const charity = await Charity.findOne({ _id: req.params.id, active: true });
     if (!charity) {
       return res.status(404).json({ success: false, message: 'Charity not found' });
@@ -84,6 +156,39 @@ const selectCharity = async (req, res) => {
     const percentage = Number(charity_percentage) || 10;
     if (percentage < 10 || percentage > 100) {
       return res.status(400).json({ success: false, message: 'Percentage must be between 10 and 100' });
+    }
+
+    if (isSupabaseConfigured) {
+      const { data: charity, error: charityError } = await supabaseAdmin
+        .from('charities')
+        .select('*')
+        .eq('id', charity_id)
+        .eq('active', true)
+        .single();
+
+      if (charityError || !charity) {
+        return res.status(404).json({ success: false, message: 'Charity not found' });
+      }
+
+      const profile = await findSupabaseProfileByRequestUser(req.user);
+      const { data: updatedProfile, error: updateError } = await supabaseAdmin
+        .from('users_profile')
+        .update({ charity_id, charity_percentage: percentage, updated_at: new Date().toISOString() })
+        .eq('id', profile.id)
+        .select('*, charities(*)')
+        .single();
+
+      if (updateError) throw updateError;
+
+      return res.json({
+        success: true,
+        message: 'Charity selected successfully',
+        user: {
+          ...updatedProfile,
+          _id: updatedProfile.id,
+          charity_id: updatedProfile.charities ? normalizeCharity(updatedProfile.charities) : updatedProfile.charity_id,
+        }
+      });
     }
 
     const charity = await Charity.findOne({ _id: charity_id, active: true });
@@ -121,6 +226,45 @@ const donateToCharity = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Donation amount must be greater than 0' });
     }
 
+    if (isSupabaseConfigured) {
+      const { data: charity, error: charityError } = await supabaseAdmin
+        .from('charities')
+        .select('*')
+        .eq('id', charity_id)
+        .eq('active', true)
+        .single();
+
+      if (charityError || !charity) {
+        return res.status(404).json({ success: false, message: 'Charity not found' });
+      }
+
+      const profile = await findSupabaseProfileByRequestUser(req.user);
+      const payload = {
+        user_id: profile.id,
+        charity_id,
+        organization_id: profile.organization_id || null,
+        campaign_id,
+        amount: normalizedAmount,
+        currency: currency || profile.preferred_currency || charity.default_currency || 'INR',
+        country_code: profile.country_code || 'IN',
+        note,
+      };
+
+      const { data: donation, error: donationError } = await supabaseAdmin
+        .from('donations')
+        .insert(payload)
+        .select('*')
+        .single();
+
+      if (donationError) throw donationError;
+
+      return res.status(201).json({
+        success: true,
+        message: 'Donation recorded successfully',
+        donation
+      });
+    }
+
     const charity = await Charity.findOne({ _id: charity_id, active: true });
     if (!charity) {
       return res.status(404).json({ success: false, message: 'Charity not found' });
@@ -155,6 +299,28 @@ const createCharity = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Name and description required' });
     }
 
+    if (isSupabaseConfigured) {
+      const payload = {
+        name,
+        description,
+        image,
+        category: category || 'General',
+        country_codes: parseCountryCodes(req.body.country_codes) || ['IN'],
+        default_currency: default_currency || 'INR',
+        featured: Boolean(featured),
+        events: parseEvents(req.body.events),
+      };
+
+      const { data, error } = await supabaseAdmin
+        .from('charities')
+        .insert(payload)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+      return res.status(201).json({ success: true, charity: normalizeCharity(data) });
+    }
+
     const charity = await Charity.create({
       name,
       description,
@@ -175,6 +341,28 @@ const createCharity = async (req, res) => {
 // @route   PUT /api/charities/:id  (admin)
 const updateCharity = async (req, res) => {
   try {
+    if (isSupabaseConfigured) {
+      const update = {
+        ...req.body,
+        country_codes: parseCountryCodes(req.body.country_codes) || undefined,
+        events: parseEvents(req.body.events),
+        updated_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabaseAdmin
+        .from('charities')
+        .update(update)
+        .eq('id', req.params.id)
+        .select('*')
+        .single();
+
+      if (error || !data) {
+        return res.status(404).json({ success: false, message: 'Charity not found' });
+      }
+
+      return res.json({ success: true, charity: normalizeCharity(data) });
+    }
+
     const update = {
       ...req.body,
       country_codes: parseCountryCodes(req.body.country_codes) || undefined,
@@ -195,6 +383,16 @@ const updateCharity = async (req, res) => {
 // @route   DELETE /api/charities/:id  (admin)
 const deleteCharity = async (req, res) => {
   try {
+    if (isSupabaseConfigured) {
+      const { error } = await supabaseAdmin
+        .from('charities')
+        .update({ active: false, updated_at: new Date().toISOString() })
+        .eq('id', req.params.id);
+
+      if (error) throw error;
+      return res.json({ success: true, message: 'Charity deactivated' });
+    }
+
     await Charity.findByIdAndUpdate(req.params.id, { active: false });
     res.json({ success: true, message: 'Charity deactivated' });
   } catch (error) {

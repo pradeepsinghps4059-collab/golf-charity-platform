@@ -4,11 +4,17 @@ const cors = require('cors');
 const morgan = require('morgan');
 const connectDB = require('./config/db');
 const { buildSecurityHeaders, enforceHttps } = require('./middleware/security');
+const { isSupabaseConfigured } = require('./services/supabaseAdmin');
 
 const app = express();
+const shouldUseMongo = process.env.USE_MONGODB === 'true' || (!isSupabaseConfigured && !!process.env.MONGODB_URI);
 
-// Connect Database
-connectDB();
+// Connect Mongo only when explicitly requested or when no Supabase config is present.
+if (shouldUseMongo) {
+  connectDB();
+} else {
+  console.log('Supabase mode enabled - skipping MongoDB connection.');
+}
 app.set('trust proxy', 1);
 
 // Middleware

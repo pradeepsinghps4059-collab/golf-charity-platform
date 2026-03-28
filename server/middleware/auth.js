@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { isSupabaseConfigured, supabaseAdmin } = require('../services/supabaseAdmin');
 
 const protect = async (req, res, next) => {
   let token;
@@ -22,7 +23,59 @@ const protect = async (req, res, next) => {
     
     next();
   } catch (error) {
-    return res.status(401).json({ success: false, message: 'Token invalid or expired' });
+    if (!isSupabaseConfigured) {
+      return res.status(401).json({ success: false, message: 'Token invalid or expired' });
+    }
+
+    try {
+      const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+      if (authError || !authData?.user?.email) {
+        return res.status(401).json({ success: false, message: 'Token invalid or expired' });
+      }
+
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from('users_profile')
+        .select('*')
+        .eq('email', authData.user.email)
+        .single();
+
+      if (profileError || !profile) {
+        req.user = {
+          id: authData.user.id,
+          _id: authData.user.id,
+          email: authData.user.email,
+          name: authData.user.user_metadata?.name || authData.user.email.split('@')[0],
+          role: authData.user.user_metadata?.role || 'user',
+          supabase_auth_id: authData.user.id,
+          profile_missing: true,
+        };
+
+        return next();
+      }
+
+      req.user = {
+        id: profile.id,
+        _id: profile.id,
+        email: profile.email,
+        name: profile.name,
+        role: profile.role,
+        country_code: profile.country_code,
+        locale: profile.locale,
+        timezone: profile.timezone,
+        preferred_currency: profile.preferred_currency,
+        subscription_status: profile.subscription_status,
+        plan: profile.plan,
+        charity_id: profile.charity_id,
+        charity_percentage: profile.charity_percentage,
+        organization_id: profile.organization_id,
+        organization_role: profile.organization_role,
+        supabase_auth_id: authData.user.id,
+      };
+
+      next();
+    } catch (supabaseError) {
+      return res.status(401).json({ success: false, message: 'Token invalid or expired' });
+    }
   }
 };
 

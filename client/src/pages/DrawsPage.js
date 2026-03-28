@@ -31,8 +31,12 @@ export default function DrawsPage() {
       api.get('/draws'),
       api.get('/draws/my-results')
     ]).then(([d, r]) => {
-      setDraws(d.data.draws);
-      setMyResults(r.data.results);
+      setDraws(d.data.draws || []);
+      setMyResults(r.data.results || []);
+    }).catch((err) => {
+      setDraws([]);
+      setMyResults([]);
+      toast.error(err.response?.data?.message || 'Failed to load draws');
     }).finally(() => setLoading(false));
   };
 

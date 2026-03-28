@@ -20,17 +20,17 @@ import AdminWinners from './pages/admin/AdminWinners';
 import LoadingSpinner from './components/shared/LoadingSpinner';
 
 const ProtectedRoute = ({ children, adminRequired = false }) => {
-  const { user, loading } = useAuth();
-  if (loading) return <LoadingSpinner fullScreen />;
+  const { user, initialized } = useAuth();
+  if (!initialized) return <LoadingSpinner fullScreen />;
   if (!user) return <Navigate to="/login" replace />;
   if (adminRequired && user.role !== 'admin') return <Navigate to="/dashboard" replace />;
   return children;
 };
 
 const PublicRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-  if (loading) return <LoadingSpinner fullScreen />;
-  if (user) return <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />;
+  const { user, initialized } = useAuth();
+  if (!initialized) return <LoadingSpinner fullScreen />;
+  if (user) return <Navigate to="/dashboard" replace />;
   return children;
 };
 

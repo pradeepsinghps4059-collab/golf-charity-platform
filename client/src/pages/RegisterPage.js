@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import BrandLogo from '../components/shared/BrandLogo';
 import { useAuth } from '../context/AuthContext';
-import api from '../utils/api';
+import { fetchCharities } from '../services/charityService';
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -21,8 +21,12 @@ export default function RegisterPage() {
   const [loadingCharities, setLoadingCharities] = useState(true);
 
   useEffect(() => {
-    api.get('/charities')
-      .then((response) => setCharities(response.data.charities))
+    fetchCharities()
+      .then((result) => setCharities(result.charities))
+      .catch(() => {
+        setCharities([]);
+        toast.error('Unable to load charities right now');
+      })
       .finally(() => setLoadingCharities(false));
   }, []);
 
@@ -57,7 +61,7 @@ export default function RegisterPage() {
       toast.success('Account created successfully');
       navigate('/subscription');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Registration failed');
+      toast.error(err.response?.data?.message || err.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -156,6 +160,10 @@ export default function RegisterPage() {
 
               {loadingCharities ? (
                 <div className="text-sm text-charcoal-500">Loading charities...</div>
+              ) : charities.length === 0 ? (
+                <div className="rounded-xl border border-red-900/40 bg-red-900/10 p-4 text-sm text-red-300">
+                  Charity list could not be loaded. Refresh the page after the backend is running.
+                </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {charities.map((charity) => {

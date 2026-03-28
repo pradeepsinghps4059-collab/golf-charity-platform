@@ -1,13 +1,13 @@
 {
   "name": "golf-charity-platform",
   "version": "1.0.0",
-  "description": "Golf Charity Subscription Platform — Full Stack",
+  "description": "Golf Charity Subscription Platform - Full Stack",
   "scripts": {
-    "install:all": "cd server && npm install && cd ../client && npm install",
-    "dev:server": "cd server && npm run dev",
-    "dev:client": "cd client && npm start",
-    "seed": "cd server && npm run seed",
-    "build:client": "cd client && npm run build"
+    "install:all": "npm --prefix server install && npm --prefix client install",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client start",
+    "seed": "npm --prefix server run seed",
+    "build:client": "npm --prefix client run build"
   },
   "private": true
 }

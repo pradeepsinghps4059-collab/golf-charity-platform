@@ -8,6 +8,7 @@ import api from '../utils/api';
 
 export default function ScoresPage() {
   const { user } = useAuth();
+  const isActive = user?.subscription_status === 'active';
   const [scores, setScores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -17,12 +18,24 @@ export default function ScoresPage() {
   });
 
   const fetchScores = () => {
-    api.get('/scores').then((r) => setScores(r.data.scores)).finally(() => setLoading(false));
+    if (!isActive) {
+      setScores([]);
+      setLoading(false);
+      return;
+    }
+
+    api.get('/scores')
+      .then((r) => setScores(r.data.scores || []))
+      .catch((err) => {
+        setScores([]);
+        toast.error(err.response?.data?.message || 'Failed to load scores');
+      })
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {
     fetchScores();
-  }, []);
+  }, [isActive]);
 
   const handleAdd = async (e) => {
     e.preventDefault();
@@ -67,9 +80,6 @@ export default function ScoresPage() {
       toast.error('Failed to remove score');
     }
   };
-
-  const isActive = user?.subscription_status === 'active';
-
   const scoreColor = (scoreValue) => {
     if (scoreValue >= 35) return 'bg-gold-900/40 text-gold-400 border border-gold-700/40';
     if (scoreValue >= 25) return 'bg-forest-900/40 text-forest-400 border border-forest-700/40';
