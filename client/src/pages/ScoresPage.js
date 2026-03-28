@@ -17,12 +17,14 @@ export default function ScoresPage() {
     date: new Date().toISOString().split('T')[0],
   });
 
-  const fetchScores = () => {
+  useEffect(() => {
     if (!isActive) {
       setScores([]);
       setLoading(false);
       return;
     }
+
+    setLoading(true);
 
     api.get('/scores')
       .then((r) => setScores(r.data.scores || []))
@@ -31,10 +33,6 @@ export default function ScoresPage() {
         toast.error(err.response?.data?.message || 'Failed to load scores');
       })
       .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    fetchScores();
   }, [isActive]);
 
   const handleAdd = async (e) => {
