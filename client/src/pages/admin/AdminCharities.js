@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import AppLayout from '../../components/shared/AppLayout';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import api from '../../utils/api';
+import { getCharityVisual } from '../../utils/charityPresentation';
 
 const emptyForm = {
   name: '',
@@ -203,35 +204,48 @@ export default function AdminCharities() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {charities.map((charity) => (
-              <div key={charity._id} className="card group">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-display font-semibold text-white mb-1 leading-snug">{charity.name}</h3>
-                    <p className="text-xs text-charcoal-500">{charity.category || 'General'}</p>
+            {charities.map((charity) => {
+              const { imageSrc, imageAlt } = getCharityVisual(charity);
+              return (
+                <div key={charity._id} className="card group">
+                  <div className="mb-4 overflow-hidden rounded-[20px] border border-white/[0.08] bg-charcoal-950/30">
+                    <img
+                      src={imageSrc}
+                      alt={imageAlt}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-40 w-full object-cover"
+                    />
                   </div>
-                  {charity.featured && <span className="badge-gold">Featured</span>}
-                </div>
 
-                <p className="text-xs text-charcoal-500 leading-relaxed mb-4 mt-3 line-clamp-3">{charity.description}</p>
-                <p className="text-xs text-charcoal-600 mb-4">Events: {charity.events?.length || 0}</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-2">
+                      <h3 className="font-display font-semibold leading-snug text-white">{charity.name}</h3>
+                      <p className="text-xs uppercase tracking-[0.18em] text-charcoal-500">{charity.category || 'General'}</p>
+                    </div>
+                    {charity.featured && <span className="badge-gold">Featured</span>}
+                  </div>
 
-                <div className="flex gap-2 mt-auto">
-                  <button
-                    onClick={() => startEdit(charity)}
-                    className="flex-1 text-xs text-center py-2 rounded-lg border border-charcoal-700 text-charcoal-400 hover:border-forest-700 hover:text-forest-400 transition-all font-medium"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(charity._id)}
-                    className="flex-1 text-xs text-center py-2 rounded-lg border border-red-900/40 text-red-500 hover:bg-red-900/20 transition-all font-medium"
-                  >
-                    Remove
-                  </button>
+                  <p className="mt-4 text-sm leading-7 text-charcoal-400 line-clamp-3">{charity.description}</p>
+                  <p className="mt-4 text-xs text-charcoal-500">Events: {charity.events?.length || 0}</p>
+
+                  <div className="mt-5 flex gap-2">
+                    <button
+                      onClick={() => startEdit(charity)}
+                      className="flex-1 rounded-lg border border-charcoal-700 py-2 text-center text-xs font-medium text-charcoal-400 transition-all hover:border-forest-700 hover:text-forest-400"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(charity._id)}
+                      className="flex-1 rounded-lg border border-red-900/40 py-2 text-center text-xs font-medium text-red-500 transition-all hover:bg-red-900/20"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

@@ -18,6 +18,7 @@ import AdminDraws from './pages/admin/AdminDraws';
 import AdminCharities from './pages/admin/AdminCharities';
 import AdminWinners from './pages/admin/AdminWinners';
 import LoadingSpinner from './components/shared/LoadingSpinner';
+import AnimatedBackground from './components/shared/AnimatedBackground';
 
 const ProtectedRoute = ({ children, adminRequired = false }) => {
   const { user, initialized } = useAuth();
@@ -63,20 +64,23 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
+      <AnimatedBackground />
       <AuthProvider>
         <AppRoutes />
         <Toaster
           position="top-right"
           toastOptions={{
             style: {
-              background: '#1e2028',
-              color: '#e2e3e6',
-              border: '1px solid #3d414b',
-              borderRadius: '12px',
+              background: 'rgba(10, 14, 26, 0.92)',
+              color: '#dde3ea',
+              border: '1px solid rgba(147, 51, 234, 0.2)',
+              borderRadius: '16px',
               fontFamily: 'DM Sans, sans-serif',
               fontSize: '14px',
+              backdropFilter: 'blur(20px)',
+              boxShadow: '0 20px 60px rgba(5, 5, 16, 0.5)',
             },
-            success: { iconTheme: { primary: '#3d8b3d', secondary: '#f0f7f0' } },
+            success: { iconTheme: { primary: '#9333ea', secondary: '#f3e8ff' } },
             error: { iconTheme: { primary: '#ef4444', secondary: '#fef2f2' } },
           }}
         />

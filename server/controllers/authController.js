@@ -27,6 +27,20 @@ const buildUserPayload = (user) => ({
   organization_role: user.organization_role
 });
 
+const fetchSupabaseCharityById = async (charityId) => {
+  if (!charityId) return null;
+
+  const { data, error } = await supabaseAdmin
+    .from('charities')
+    .select('*')
+    .eq('id', charityId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data || data.active === false) return null;
+  return data;
+};
+
 const buildSupabaseProfilePayload = async (profile) => {
   let charity = null;
   let organization = null;
@@ -83,9 +97,16 @@ const register = async (req, res) => {
     let selectedPercentage = 10;
 
     if (charity_id) {
-      const charity = await Charity.findOne({ _id: charity_id, active: true });
-      if (!charity) {
-        return res.status(400).json({ success: false, message: 'Selected charity is not available' });
+      if (isSupabaseConfigured) {
+        const charity = await fetchSupabaseCharityById(charity_id);
+        if (!charity) {
+          return res.status(400).json({ success: false, message: 'Selected charity is not available' });
+        }
+      } else {
+        const charity = await Charity.findOne({ _id: charity_id, active: true });
+        if (!charity) {
+          return res.status(400).json({ success: false, message: 'Selected charity is not available' });
+        }
       }
 
       selectedCharityId = charity_id;

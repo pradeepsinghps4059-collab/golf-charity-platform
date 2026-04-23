@@ -29,34 +29,41 @@ const normalizeCharity = (charity) => ({
   _id: charity._id || charity.id,
 });
 
-const buildSupabaseCharityQuery = ({ search = '', category = '', featured = '', country = '' }) => {
-  let query = supabaseAdmin
+const filterSupabaseCharities = (charities, { search = '', category = '', featured = '', country = '' } = {}) => {
+  const term = String(search || '').trim().toLowerCase();
+  const normalizedCountry = String(country || '').trim().toUpperCase();
+
+  return (charities || [])
+    .filter((charity) => charity && charity.active !== false)
+    .filter((charity) => !category || charity.category === category)
+    .filter((charity) => featured !== 'true' || charity.featured === true)
+    .filter((charity) => {
+      if (!normalizedCountry) return true;
+      if (!Array.isArray(charity.country_codes)) return true;
+      return charity.country_codes.map((value) => String(value).toUpperCase()).includes(normalizedCountry);
+    })
+    .filter((charity) => {
+      if (!term) return true;
+      return [charity.name, charity.description, charity.category]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(term));
+    })
+    .sort((a, b) => {
+      if (Boolean(a.featured) !== Boolean(b.featured)) {
+        return a.featured ? -1 : 1;
+      }
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+};
+
+const fetchSupabaseCharities = async (filters = {}) => {
+  const { data, error } = await supabaseAdmin
     .from('charities')
     .select('*')
-    .eq('active', true)
-    .order('featured', { ascending: false })
     .order('name', { ascending: true });
 
-  if (category) {
-    query = query.eq('category', category);
-  }
-
-  if (featured === 'true') {
-    query = query.eq('featured', true);
-  }
-
-  if (country) {
-    query = query.contains('country_codes', [country.toUpperCase()]);
-  }
-
-  if (search) {
-    const term = search.trim();
-    if (term) {
-      query = query.or(`name.ilike.%${term}%,description.ilike.%${term}%,category.ilike.%${term}%`);
-    }
-  }
-
-  return query;
+  if (error) throw error;
+  return filterSupabaseCharities(data || [], filters).map(normalizeCharity);
 };
 
 const findSupabaseProfileByRequestUser = async (reqUser) => {
@@ -75,10 +82,7 @@ const getCharities = async (req, res) => {
   try {
     if (isSupabaseConfigured) {
       const { search = '', category = '', featured = '', country = '' } = req.query;
-      const { data, error } = await buildSupabaseCharityQuery({ search, category, featured, country });
-      if (error) throw error;
-
-      const charities = (data || []).map(normalizeCharity);
+      const charities = await fetchSupabaseCharities({ search, category, featured, country });
       const categories = [...new Set(charities.map((charity) => charity.category).filter(Boolean))];
       return res.json({ success: true, charities, categories });
     }
@@ -119,18 +123,14 @@ const getCharities = async (req, res) => {
 const getCharityById = async (req, res) => {
   try {
     if (isSupabaseConfigured) {
-      const { data, error } = await supabaseAdmin
-        .from('charities')
-        .select('*')
-        .eq('id', req.params.id)
-        .eq('active', true)
-        .single();
+      const charities = await fetchSupabaseCharities();
+      const charity = charities.find((item) => item.id === req.params.id || item._id === req.params.id);
 
-      if (error || !data) {
+      if (!charity) {
         return res.status(404).json({ success: false, message: 'Charity not found' });
       }
 
-      return res.json({ success: true, charity: normalizeCharity(data) });
+      return res.json({ success: true, charity });
     }
 
     const charity = await Charity.findOne({ _id: req.params.id, active: true });

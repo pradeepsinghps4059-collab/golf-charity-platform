@@ -5,6 +5,7 @@ import LoadingSpinner from '../components/shared/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { fetchCharities, fetchCharityById } from '../services/charityService';
+import { getCharityVisual } from '../utils/charityPresentation';
 
 export default function CharityPage() {
   const { user, refreshUser } = useAuth();
@@ -157,9 +158,18 @@ export default function CharityPage() {
                   onClick={() => openCharityDetails(charity._id)}
                   className="glass-panel mesh-border text-left p-6 transition-all duration-300 hover:-translate-y-1"
                 >
-                  <div className="text-xs uppercase tracking-[0.24em] text-gold-400 mb-2">Featured</div>
-                  <div className="font-display text-xl font-bold text-white">{charity.name}</div>
-                  <div className="text-charcoal-400 text-sm mt-2 line-clamp-3">{charity.description}</div>
+                  <div className="mb-5 overflow-hidden rounded-[22px] border border-white/[0.08] bg-charcoal-950/30">
+                    <img
+                      src={getCharityVisual(charity).imageSrc}
+                      alt={getCharityVisual(charity).imageAlt}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-44 w-full object-cover"
+                    />
+                  </div>
+                  <div className="text-xs uppercase tracking-[0.24em] text-gold-400 mb-3">Featured</div>
+                  <div className="font-display text-xl font-bold leading-tight text-white">{charity.name}</div>
+                  <div className="text-charcoal-400 text-sm mt-3 leading-7 line-clamp-3">{charity.description}</div>
                 </button>
               ))}
             </div>
@@ -225,6 +235,7 @@ export default function CharityPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {charities.map((charity) => {
                   const isSelected = selected === charity._id;
+                  const { imageSrc, imageAlt } = getCharityVisual(charity);
                   return (
                     <div
                       key={charity._id}
@@ -234,14 +245,23 @@ export default function CharityPage() {
                           : 'border-charcoal-800 bg-charcoal-900/40'
                       }`}
                     >
+                      <div className="mb-4 overflow-hidden rounded-[20px] border border-white/[0.08] bg-charcoal-950/30">
+                        <img
+                          src={imageSrc}
+                          alt={imageAlt}
+                          loading="lazy"
+                          decoding="async"
+                          className="h-40 w-full object-cover"
+                        />
+                      </div>
                       <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="font-display font-semibold text-white text-lg">{charity.name}</div>
-                          <div className="text-xs text-charcoal-500 mt-1">{charity.category || 'General'}</div>
+                        <div className="space-y-2">
+                          <div className="font-display text-lg font-semibold leading-snug text-white">{charity.name}</div>
+                          <div className="text-xs uppercase tracking-[0.18em] text-charcoal-500">{charity.category || 'General'}</div>
                         </div>
                         {charity.featured && <span className="badge-gold">Spotlight</span>}
                       </div>
-                      <p className="text-sm text-charcoal-400 mt-3 line-clamp-3">{charity.description}</p>
+                      <p className="mt-4 text-sm leading-7 text-charcoal-400 line-clamp-3">{charity.description}</p>
                       <div className="flex gap-2 mt-4">
                         <button
                           type="button"
@@ -348,7 +368,17 @@ export default function CharityPage() {
               </button>
             </div>
 
-            <p className="text-charcoal-400 mt-4 leading-relaxed">{activeCharity.description}</p>
+            <div className="mt-5 overflow-hidden rounded-[24px] border border-white/[0.08] bg-charcoal-950/30">
+              <img
+                src={getCharityVisual(activeCharity).imageSrc}
+                alt={getCharityVisual(activeCharity).imageAlt}
+                loading="lazy"
+                decoding="async"
+                className="h-60 w-full object-cover"
+              />
+            </div>
+
+            <p className="text-charcoal-400 mt-5 leading-8">{activeCharity.description}</p>
 
             <div className="mt-6">
               <h3 className="section-title mb-3">Upcoming Events</h3>
